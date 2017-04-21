@@ -1,12 +1,9 @@
-function initializeSidebar () {
+function Sidebar () {
     var sideBarCanvas = document.createElement("canvas");
     sideBarCanvas.height = canvasPixelHeight;
     sideBarCanvas.width = 1;
-    sideBarCanvas.style.float = "right";
-    sideBarCanvas.style.height = "100%";
-    sideBarCanvas.style.width = "auto";
-    sideBarCanvas.style.imageRendering = "pixelated";
-
+    sideBarCanvas.className = "sideBar";
+    
     document.body.appendChild(sideBarCanvas);
 
     var colors = [[255, 0, 0],
@@ -14,17 +11,32 @@ function initializeSidebar () {
                   [0, 0, 255]];
 
 
-    for(var i = 0; i < colors.length; i++) {
-        var color = colors[i];
-        canvasAddPixel(sideBarCanvas, 0, i, color[0], color[1], color[2]);
+    for(let i = 0; i < colors.length; i++) {
+        let c = colors[i];
+        addPixelToCanvas(sideBarCanvas, 0, i, c);
+    }
+
+    for(let i = colors.length;i < canvasPixelHeight; i++) {
+        addPixelToCanvas(sideBarCanvas, 0, i, [0, 0, 0]);
     }
 
 
     sideBarCanvas.addEventListener("click", function (event) {
-        var pos = getMousePos(sideBarCanvas, event),
-            ncolor = colors[Math.floor(pos.y)];
-
-        drawColor = ncolor;
+        let pos = getMousePos(sideBarCanvas, event),
+            colorIndex = Math.floor(pos.y);
+        
+        if(colorIndex >= colors.length)
+            return;
+        
+        drawColor = colors[colorIndex];
         drawing  = true;
     });
+
+    this.hide = function() {
+        sideBarCanvas.style.visibility = "hidden";
+    };
+
+    this.show = function() {
+        sideBarCanvas.style.visibility = "visible";
+    };
 }
