@@ -117,7 +117,7 @@ function movePoint(pos, direction) {
         case DirEnum.LEFT:
             movement.x = -1;
             break;
-        case DirEnum.Up:
+        case DirEnum.UP:
             movement.y = -1;
             break;
         case DirEnum.RIGHT:
@@ -128,8 +128,8 @@ function movePoint(pos, direction) {
             break;
         }
 
-    pos.x += movement.x;
-    pos.y += movement.y;
+    movement.x += pos.x;
+    movement.y += pos.y;
 
-    return pos;
+    return movement;
 }

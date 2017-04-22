@@ -101,10 +101,10 @@ function World() {
 
         let newPos = movePoint(hero.pos, direction);
 
-        if(newPos.x < 0 || newPos.x >= canvasWidth) {
-            throw "Invalid position";
-        } else if (newPos.y < 0 || newPos.y >= canvasPixelHeight)
-            throw "Invalid position";
+        if(newPos.x < 0 || newPos.x + hero.width > canvasWidth) {
+            return;
+        } else if (newPos.y < 0 || newPos.y + hero.height > canvasPixelHeight)
+            return;
 
         for(let i = 0; i < hero.height; i++) {
             for(let j = 0; j < hero.width; j++) {
@@ -114,15 +114,15 @@ function World() {
                 let pos = {x: newPos.x + j, y: newPos.y + i};
 
                 if(this.solids[pos.y][pos.x])
-                    throw "Invalid position";
+                    return;
             }
         }
 
         let repaintPixels = new Array(hero.height);
 
         for(let i = 0; i < hero.height; i++) {
-            repaintPixels[i] = this.colors[hero.pos.y].slice(hero.pos.x,
-                                                             hero.pos.x + hero.width);
+            repaintPixels[i] = this.colors[hero.pos.y + i].slice(hero.pos.x,
+                                                                 hero.pos.x + hero.width);
         }
 
         fillEmptyPixels(repaintPixels, [255, 255, 255]);

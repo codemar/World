@@ -1,20 +1,26 @@
 document.addEventListener("DOMContentLoaded", initialize);
 
+let myHero;
+let world;
+let sidebar;
+let heroBuilder;
+
 function initialize() {
     document.body.style.margin = '0px'; // remove margin
     
-    const sb = new Sidebar();
-    const world = new World();
-    const hb = new HeroBuilder();
-    let myHero;
-
+    sidebar = new Sidebar();
+    world = new World();
+    heroBuilder = new HeroBuilder();
+    
     const createfun = function() {
-        myHero = new Hero({x: 5, y: 5}, hb.character);
+        myHero = new Hero({x: 5, y: 5}, heroBuilder.character);
         world.addHero(myHero);
+
+        enableMovement();
         
-        hb.heroCanvas.removeEventListener("click", createfun);
-        hb.hide();
+        heroBuilder.heroCanvas.removeEventListener("click", createfun);
+        heroBuilder.hide();
     };
     
-    hb.doneCanvas.addEventListener("click", createfun);
+    heroBuilder.doneCanvas.addEventListener("click", createfun);
 }
