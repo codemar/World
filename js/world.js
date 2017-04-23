@@ -108,7 +108,7 @@ function World() {
 
         for(let i = 0; i < hero.height; i++) {
             for(let j = 0; j < hero.width; j++) {
-                if(!hero.blocks[j][i])
+                if(!hero.blocks[i][j])
                     continue;
 
                 let pos = {x: newPos.x + j, y: newPos.y + i};
