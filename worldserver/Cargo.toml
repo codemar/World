@@ -1,0 +1,7 @@
+[package]
+name = "worldserver"
+version = "0.1.0"
+authors = ["Omar Zeidan <omar@zeidan.io>"]
+
+[dependencies]
+websocket = "0.19.1"
