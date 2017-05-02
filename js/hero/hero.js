@@ -4,9 +4,9 @@ function Hero (pos, blocks) {
     let trimmedReturn = trimBlocks(blocks);
     
     this.pos = pos;
-    this.blocks = trimmedReturn[0];
-    this.width = trimmedReturn[1];
-    this.height = trimmedReturn[2];
+    this.blocks = trimmedReturn.blocks;
+    this.width = trimmedReturn.width;
+    this.height = trimmedReturn.height;
 
     // this.drawHero = function (blank) {
     //     for(let i = 0; i < blocks.length; i++) {
@@ -66,8 +66,8 @@ function trimBlocks(blocks) {
 
     let yCut = blocks.slice(miny, maxy + 1);
     let cut = yCut.map((elem) => elem.slice(minx, maxx + 1));
-
-    return [cut, maxx - minx + 1, maxy - miny + 1];
+    
+    return {blocks: cut, width: maxx - minx + 1, height: maxy - miny + 1};
 }
 
 let DirEnum = {
