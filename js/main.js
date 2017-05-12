@@ -19,7 +19,7 @@ function initialize() {
         // world.addHero(myHero);
 
         client.connect();
-        client.setHeroPixels(myHero.blocks, myHero.width, myHero.height);
+        client.sendHeroPixels(myHero.blocks, myHero.width, myHero.height);
 
         enableMovement();
         
