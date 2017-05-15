@@ -1,7 +1,7 @@
 use std::thread;
 use websocket::Server;
-use player::Connection;
-use hero::Hero;
+use connection::Connection;
+use world::World;
 
 
 pub fn server_loop() {
@@ -14,9 +14,15 @@ pub fn server_loop() {
 		return;
 	    }
 	    let client = request.use_protocol("rust-websocket").accept().unwrap();
+            let ip = client.peer_addr().unwrap();
+	    println!("Connection from {}", ip);
+            
 	    let (receiver, sender) = client.split().unwrap();
+            let world = World::new(50);
 
-            let mut player = Connection{sender: sender, receiver: receiver, alive: false, hero: Hero::new()};
+            let mut player = Connection{sender: sender, receiver: receiver,
+                                        alive: false, hero: None,
+                                        world: world, ip: ip};
             player.receiver_loop();
 
 	});
