@@ -22,6 +22,12 @@ function Client(wsAdress) {
     };
 
     // format: uint8array: [opcode, x, y, r, g, b]
+    this.setBlock = function(x, y, color) {
+        let uint8arr = blocksToUint8Array([[color]], 1, 1);
+        uint8arr = setHeader([OpCode.SetBlock, x, y], uint8arr);
+        this.ws.send(uint8arr.buffer);
+    };
+
     // atm a ping message consists of 8 1's
     this.ping = function() {
         let msg = new Uint8Array(1);
@@ -67,5 +73,8 @@ function setHeader(header, arr) {
 
 let OpCode = {
     Ping: 0,
-    SetCharacter: 1
+    SetCharacter: 1,
+    GetWorld: 2,
+    SetBlock: 3,
+    Disconnect: 4
 };
