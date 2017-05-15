@@ -1,94 +1,144 @@
+use color::Color;
+use position::Pos;
+use std::default::Default;
 use std::fmt;
-use color;
-use position;
-type Color = color::Color;
-type Pos = position::Pos;
 
-pub struct Canvas {
+pub struct Canvas<T: Copy> {
     width: u32,
     height: u32,
-    data: Vec<Color>,
-    current_position: Pos
+    data: Vec<T>
 }
 
 
 
-impl Canvas {
-    pub fn new(width: u32, height: u32, bytes: &[u8]) -> Result<Canvas, ()> {
-        if bytes.len() as u32 != (width * height * 3) {
-            return Err(());
-        }
-        
-        let mut colors = Vec::new();
+impl <T: Copy> Canvas<T> {
+    pub fn new<U>(width: u32, height: u32) -> Canvas<U> where U: Default + Copy {
+        let elem_count = width * height;
+        let mut data = Vec::with_capacity((elem_count) as usize);
 
+        for _ in 0..elem_count {
+            let def : U = Default::default();
+            data.push(def);
+        }
+
+        Canvas{width: width, height: height, data: data}
+    }
+
+    pub fn get(&self, position: Pos) -> Option<T> {
+        if let Ok(index) = self.calculate_index(position) {
+            Some(self.data[index as usize])
+        } else {
+            None
+        }
+    }
+
+    pub fn set(&mut self, position: Pos, elem: T) -> Result<(), ()> {
+        if let Ok(index) = self.calculate_index(position) {
+            self.data[index as usize] = elem;
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    fn calculate_index(&self, position: Pos) -> Result<u32, ()>{
+        let (x, y) = (position.x, position.y);
+
+        if x >= self.width || y >= self.height {
+            Err(())
+        } else {
+            Ok(y * self.width + x)
+        }
+    }
+}
+
+
+impl Canvas<Color>{
+    pub fn from_bytes(width: u32, height: u32, bytes: &[u8]) -> Option<Canvas<Color>> {
+        if bytes.len() != (width * height * 3) as usize {
+            return None;
+        }
+
+        
+        let mut colors = Vec::with_capacity((width * height) as usize);
+        
         for i in 0..height {
             for j in 0..width {
-                let ti = (i * width + j) * 3; // trueindex
-                colors.push(Color{red: bytes[ti as usize],
-                                  green: bytes[(ti + 1) as usize],
-                                  blue: bytes[(ti + 2) as usize]});
+                let index = (((i * width) + j) * 3) as usize;
+                let slice = &bytes[index..(index + 3)];
+                colors.push(Color{red: slice[0], green: slice[1], blue: slice[2]});
             }
         }
-        
-        Ok(Canvas { width: width, height: height, data: colors, current_position: Pos {x: 0, y: 0} })
-    }
 
-    pub fn get_pixel(&self, x : u32, y : u32) -> Option<Color> {
-        match self.data.get((y * self.height + x) as usize) {
-            Some(colref) => Some(*colref),
-            None => None
-        }
+        return Some(Canvas{width: width, height: height, data: colors});
     }
+    
 }
 
-impl fmt::Display for Canvas {
+impl fmt::Debug for Canvas<Color> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for i in 0..self.height {
             for j in 0..self.width {
-                if let Err(e) = write!(f, "{} ", self.data[(i * self.width + j) as usize]) {
-                    return Err(e);
+                let index = (i * self.width + j) as usize;
+                let color = self.data[index];
+
+                if color.red != 255 || color.green != 255 || color.blue != 255 {
+                    if let Err(_) = writeln!(f, "{} at {}, {}", color, j, i) {
+                        ()
+                    }
                 }
             }
-            if let Err(e) = write!(f, "\n") {
-                return Err(e);
-            }
         }
-        return Ok(());
+        Ok(())
     }
 }
 
-impl <'a> IntoIterator for &'a Canvas {
-    type Item = (Pos, Color);
-    type IntoIter = CanvasIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        CanvasIter {canvas: self, current_pos: Pos{x: 0, y:0}}
-    }
-}
-
-pub struct CanvasIter <'a> {
-    canvas : &'a Canvas,
-    current_pos : Pos
-}
 
 
-impl <'a> Iterator for CanvasIter<'a> {
-    type Item = (Pos, Color);
-    
-    fn next(&mut self) -> Option<(Pos, Color)> {
-        let curr_pos = self.current_pos;
-        let current_color = self.canvas.get_pixel(curr_pos.x, curr_pos.y);
+// Todo
+// impl fmt::Display for Canvas {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         for i in &self.data {
+//             if let Err(e) = write!(f, "{}", i) {
+//                 Err(e)
+//             }
+//         }
+//         Ok(())
+//     }
+// }
 
-        self.current_pos.x += 1;
+// impl <'a> IntoIterator for &'a Canvas {
+//     type Item = (Pos, Color);
+//     type IntoIter = CanvasIter<'a>;
 
-        if self.current_pos.x > self.canvas.width {
-            self.current_pos.x = 0;
-            self.current_pos.y += 1;
-        }
+//     fn into_iter(self) -> Self::IntoIter {
+//         CanvasIter {canvas: self, current_pos: Pos{x: 0, y:0}}
+//     }
+// }
 
-        match current_color {
-            Some(col) => Some((curr_pos, col)),
-            None => None
-        }
-    }
-}
+// pub struct CanvasIter <'a> {
+//     canvas : &'a Canvas,
+//     current_pos : Pos
+// }
+
+
+// impl <'a> Iterator for CanvasIter<'a> {
+//     type Item = (Pos, Color);
+
+//     fn next(&mut self) -> Option<(Pos, Color)> {
+//         let curr_pos = self.current_pos;
+//         let current_color = self.canvas.get_pixel(curr_pos.x, curr_pos.y);
+
+//         self.current_pos.x += 1;
+
+//         if self.current_pos.x > self.canvas.width {
+//             self.current_pos.x = 0;
+//             self.current_pos.y += 1;
+//         }
+
+//         match current_color {
+//             Some(col) => Some((curr_pos, col)),
+//             None => None
+//         }
+//     }
+// }
