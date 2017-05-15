@@ -5,7 +5,7 @@ mod canvas;
 mod color;
 mod server;
 mod hero;
-mod player;
+mod connection;
 mod position;
 mod world;
 

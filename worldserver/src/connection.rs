@@ -1,24 +1,37 @@
 extern crate websocket;
 
-use hero;
+use hero::Hero;
+use canvas::Canvas;
 use websocket::client::{Reader, Writer};
 use websocket::Message;
 use websocket::message::Type;
 use std::net::TcpStream;
-use world::Interval;
-use server;
+use std::net::SocketAddr;
+use color::Color;
+use world::World;
+use position::Pos;
 
 pub struct Connection {
     pub sender: Writer<TcpStream>,
     pub receiver: Reader<TcpStream>,
     pub alive: bool,
-    pub hero: hero::Hero,
+    pub hero: Option<Hero>,
+    pub world: World,
+    pub ip: SocketAddr,
 }
 
 
 impl Connection  {
-    pub fn changeBlocks(&mut self, width: u32, height: u32, blocks: &[u8]) {
-        self.hero.set_blocks(width, height, blocks);
+    pub fn change_blocks(&mut self, width: u32, height: u32, blocks: &[u8]) {
+        let canvas = Canvas::from_bytes(width, height, blocks).unwrap();
+        match self.hero {
+            None => {
+                self.hero = Some(Hero::new(width, height, canvas));
+            }
+            Some(ref mut inner) => {
+                inner.set_blocks(width, height, canvas);
+            }
+        }
     }
 
     pub fn receiver_loop(&mut self) {
@@ -30,12 +43,23 @@ impl Connection  {
                         OpCode::Disconnect => break,
                         OpCode::SetCharacter => {
                             let payload = message.payload;
-                            self.changeBlocks(*payload.get(1).unwrap() as u32,
+                            self.change_blocks(*payload.get(1).unwrap() as u32,
                                                 *payload.get(2).unwrap() as u32,
                                                 &payload[3..payload.len()]);
-
-                            self.hero.output_blocks();
                         },
+                        OpCode::SetBlock => {
+                            
+
+                            let payload = message.payload;
+                            let x = (*payload.get(1).unwrap()) as u32;
+                            let y = (*payload.get(2).unwrap()) as u32;
+                            let color = Color::from_bytes(&payload[3..6]);
+
+                            println!("{} tries to set block {} at {},{}", self.ip, color, x, y);
+                            self.world.insert_color(Pos{x: x, y: y}, color, false);
+                            println!("{:?}", self.world);
+
+                        }
                         _ => ()
                     }
                 }
@@ -60,6 +84,11 @@ impl Connection  {
         }
     }
 
+    // fn send_message(&mut self) {
+    //     let message = Message::binary()
+        
+    // }
+
     
 
 }
@@ -72,6 +101,7 @@ fn decode_message(ref msg : &Message) -> Option<OpCode> {
             0 => Some(OpCode::Ping,),
             1 => Some(OpCode::SetCharacter),
             2 => Some(OpCode::GetWorld),
+            3 => Some(OpCode::SetBlock),
             _ => None
         }
     } else {
@@ -84,6 +114,7 @@ pub enum OpCode {
     Ping,
     SetCharacter,
     GetWorld,
+    SetBlock,
     Disconnect
 }
 

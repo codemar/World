@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Hash)]
+#[derive(Copy, Clone, Hash, Debug)]
 pub struct Pos {
     pub x: u32,
     pub y: u32,
