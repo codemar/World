@@ -1,4 +1,10 @@
-// Communication with the server via websockets.
+/* Communication with the server via websockets.
+   
+   The communication of the clients to the server is being done via binary data
+   i.e. Uint8arrays that follow a strict layout. These layouts are denoted above
+   the corresponding functions. 
+
+*/
 function Client(wsAdress) {
     this.wsAdress = wsAdress;
     this.ws = null;
@@ -7,12 +13,15 @@ function Client(wsAdress) {
         this.ws = new WebSocket(this.wsAdress, "rust-websocket");
     };
 
+
+    // format: uint8array: [opcode, width, height, data ...]
     this.sendHeroPixels = function(blocks, width, height) {
         let uint8arr = blocksToUint8Array(blocks, width, height);
         uint8arr = setHeader([OpCode.SetCharacter, width, height], uint8arr);
         this.ws.send(uint8arr.buffer);
     };
 
+    // format: uint8array: [opcode, x, y, r, g, b]
     // atm a ping message consists of 8 1's
     this.ping = function() {
         let msg = new Uint8Array(1);
