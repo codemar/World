@@ -9,20 +9,26 @@ use std::net::TcpStream;
 use std::net::SocketAddr;
 use color::Color;
 use world::World;
-use position::Pos;
+use std::sync::{Arc, Mutex};
 
 pub struct Connection {
-    pub sender: Writer<TcpStream>,
-    pub receiver: Reader<TcpStream>,
-    pub alive: bool,
-    pub hero: Option<Hero>,
-    pub world: World,
-    pub ip: SocketAddr,
+    sender: Writer<TcpStream>,
+    receiver: Reader<TcpStream>,
+    ip: SocketAddr,
+    hero: Option<Hero>,
+    world_mutex: Arc<Mutex<World>>
 }
 
 
 impl Connection  {
-    pub fn change_blocks(&mut self, width: u32, height: u32, blocks: &[u8]) {
+    pub fn new(sender: Writer<TcpStream>,
+               receiver: Reader<TcpStream>,
+               ip: SocketAddr,
+               world_mutex: Arc<Mutex<World>>) -> Connection {
+        Connection{sender: sender, receiver: receiver, ip: ip, hero: None, world_mutex: world_mutex}
+    }
+        
+    fn change_blocks(&mut self, width: u32, height: u32, blocks: &[u8]) {
         let canvas = Canvas::from_bytes(width, height, blocks).unwrap();
         match self.hero {
             None => {
@@ -39,6 +45,8 @@ impl Connection  {
                 let opcode = self.receive_message();
 
                 if let Some((opc, message)) = opcode {
+                    println!("Received mesage with opcode {:?} from {}", opc, self.ip);
+                    
                     match opc {
                         OpCode::Disconnect => break,
                         OpCode::SetCharacter => {
@@ -48,17 +56,22 @@ impl Connection  {
                                                 &payload[3..payload.len()]);
                         },
                         OpCode::SetBlock => {
-                            
-
                             let payload = message.payload;
-                            let x = (*payload.get(1).unwrap()) as u32;
-                            let y = (*payload.get(2).unwrap()) as u32;
-                            let color = Color::from_bytes(&payload[3..6]);
+                            
+                            let x = (*payload).get(1);
+                            let y = (*payload).get(2);
+                            let color_bytes = (*payload).get(3..6);
 
-                            println!("{} tries to set block {} at {},{}", self.ip, color, x, y);
-                            self.world.insert_color(Pos{x: x, y: y}, color, false);
-                            println!("{:?}", self.world);
-
+                            match (x, y, color_bytes) {
+                                (Some(x), Some(y), Some(color_bytes)) => {
+                                    let color = Color::from_bytes(color_bytes);
+                                    let mut world = self.world_mutex.lock().unwrap();
+                                    
+                                    (*world).insert_color(*x as u32, *y as u32, color, false);
+                                    println!("{:?}", *world);
+                                }
+                                _ => return
+                            }
                         }
                         _ => ()
                     }
@@ -109,7 +122,7 @@ fn decode_message(ref msg : &Message) -> Option<OpCode> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug)]
 pub enum OpCode {
     Ping,
     SetCharacter,

@@ -19,8 +19,8 @@ impl World {
         }
     }
 
-    pub fn insert_color(&mut self, position: Pos, color: Color, collides: bool) {
-        let (chunk_pos, rel_pos) = self.calc_relative_coordinates(position);
+    pub fn insert_color(&mut self, x: u32, y: u32, color: Color, collides: bool) {
+        let (chunk_pos, rel_pos) = self.calc_relative_coordinates(Pos{x: x, y: y});
         
         if let Some(ref mut canvas) = self.color_map.get_mut(&chunk_pos) {
             canvas.set(rel_pos, color).unwrap();
