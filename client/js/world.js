@@ -25,6 +25,7 @@ function World() {
     this.worldCanvas.addEventListener("click", function(event) {
         const pos = getMousePos($this.worldCanvas, event);
         $this.buildBlock(pos.x, pos.y, drawColor, true);
+        client.setBlock(pos.x, pos.y, drawColor);
     });
 
     
