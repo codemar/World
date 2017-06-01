@@ -1,5 +1,10 @@
 extern crate websocket;
 
+#[macro_use]
+extern crate enum_index_derive;
+extern crate enum_index;
+
+extern crate byteorder;
 
 mod canvas;
 mod color;

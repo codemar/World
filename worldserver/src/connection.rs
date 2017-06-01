@@ -1,15 +1,17 @@
-extern crate websocket;
-
 use hero::Hero;
 use canvas::Canvas;
 use websocket::client::{Reader, Writer};
 use websocket::Message;
-use websocket::message::Type;
 use std::net::TcpStream;
 use std::net::SocketAddr;
 use color::Color;
 use world::World;
 use std::sync::{Arc, Mutex};
+use std::io::Cursor;
+use byteorder::{BigEndian, ReadBytesExt};
+
+use enum_index::{EnumIndex, IndexEnum};
+use enum_index;
 
 pub struct Connection {
     sender: Writer<TcpStream>,
@@ -27,7 +29,7 @@ impl Connection  {
                world_mutex: Arc<Mutex<World>>) -> Connection {
         Connection{sender: sender, receiver: receiver, ip: ip, hero: None, world_mutex: world_mutex}
     }
-        
+    
     fn change_blocks(&mut self, width: u32, height: u32, blocks: &[u8]) {
         let canvas = Canvas::from_bytes(width, height, blocks).unwrap();
         match self.hero {
@@ -41,94 +43,86 @@ impl Connection  {
     }
 
     pub fn receiver_loop(&mut self) {
-            loop {
-                let opcode = self.receive_message();
+        loop {
+            let message = self.receive_message();
+            
+            if let Some((opc, data)) = message {
+                println!("Received mesage with opcode {:?} from {}", opc, self.ip);
+                
+                match opc {
+                    InOpCode::Disconnect => break,
+                    InOpCode::SetCharacter => {
+                        if data.len() >= 8
+                        {
+                            let width = bytesToU32(&data[0..4]);
+                            let height = bytesToU32(&data[4..8]);
+                            let block_data = &data[8..data.len()];
 
-                if let Some((opc, message)) = opcode {
-                    println!("Received mesage with opcode {:?} from {}", opc, self.ip);
-                    
-                    match opc {
-                        OpCode::Disconnect => break,
-                        OpCode::SetCharacter => {
-                            let payload = message.payload;
-                            self.change_blocks(*payload.get(1).unwrap() as u32,
-                                                *payload.get(2).unwrap() as u32,
-                                                &payload[3..payload.len()]);
-                        },
-                        OpCode::SetBlock => {
-                            let payload = message.payload;
+                            println!("Width: {:?}, Height: {:?}", width, height);
+                            println!("Data: {:?}", block_data);
                             
-                            let x = (*payload).get(1);
-                            let y = (*payload).get(2);
-                            let color_bytes = (*payload).get(3..6);
-
-                            match (x, y, color_bytes) {
-                                (Some(x), Some(y), Some(color_bytes)) => {
-                                    let color = Color::from_bytes(color_bytes);
-                                    let mut world = self.world_mutex.lock().unwrap();
-                                    
-                                    (*world).insert_color(*x as u32, *y as u32, color, false);
-                                    println!("{:?}", *world);
-                                }
-                                _ => return
-                            }
+                            self.change_blocks(width,
+                                               height,
+                                               block_data);
                         }
-                        _ => ()
+                    },
+                    InOpCode::SetBlock => {
+                        if data.len() >= 11 {
+                            let x = bytesToU32(&data[0..4]);
+                            let y = bytesToU32(&data[4..8]);
+                            let color = Color::from_bytes(&data[8..11]);
+                            let mut world = self.world_mutex.lock().unwrap();
+                            (*world).insert_color(x as u32, y as u32, color, false);
+
+                            println!("{} inserted color {} at {}, {}", self.ip, color, x, y);
+                        }
                     }
+                    InOpCode::GetWorld => {
+                        
+                    }
+                    _ => ()
                 }
             }
+        }
     }
 
-    
-    fn receive_message<'b>(&mut self) -> Option<(OpCode, Message<'b>)> {
+
+
+
+    fn receive_message<'a>(&mut self) -> Option<(InOpCode, Vec<u8>)> {
         let ref mut receiver = self.receiver;
-        let message : Message = receiver.incoming_messages().next().unwrap().unwrap();
+        let message = receiver.incoming_messages().next();
 
-        match message.opcode {
-            Type::Close => {
-                // println!("Client {} disconnected", ip);
-                Some((OpCode::Disconnect, message, ))
-            }
-	    
-            Type::Binary => {
-                Some((decode_message(&message).unwrap(), message))
-            }
-            _ => None
-        }
-    }
-
-    // fn send_message(&mut self) {
-    //     let message = Message::binary()
         
-    // }
+        if let Some(Ok(msg)) =  message {
+            let msgt : Message = msg; // Apparently you need to do this for the type annotation
+            let data = msgt.payload;
 
-    
-
-}
-
-fn decode_message(ref msg : &Message) -> Option<OpCode> {
-    let ref payload = msg.payload;
-
-    if let Some(a) = payload.get(0) {
-        match *a as u32 {
-            0 => Some(OpCode::Ping,),
-            1 => Some(OpCode::SetCharacter),
-            2 => Some(OpCode::GetWorld),
-            3 => Some(OpCode::SetBlock),
-            _ => None
+            if let Some(val) = data.get(0) {
+                if let Some(opcode) = InOpCode::index_enum(*val as usize) {
+                    return Some((opcode, data[1..].to_vec()));
+                }
+            }
         }
-    } else {
-        return None;
+
+        None
     }
+
+
+
 }
 
-#[derive(Debug)]
-pub enum OpCode {
+
+fn bytesToU32 (bytes : &[u8]) -> u32 {
+    let mut buf = Cursor::new(bytes);
+    buf.read_u32::<BigEndian>().unwrap()
+}
+
+#[derive(Debug, EnumIndex, IndexEnum)]
+pub enum InOpCode {
     Ping,
     SetCharacter,
     GetWorld,
     SetBlock,
     Disconnect
 }
-
-
